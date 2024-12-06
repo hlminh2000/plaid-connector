@@ -1,95 +1,91 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client"
+import { usePlaidLink, PlaidLink } from 'react-plaid-link';
+import { Box, Button, Card, CardContent, CardHeader, Container, Divider, Grid2, List, ListItem, Paper, TextField, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
+import { PlaidApi } from "plaid";
+import { metadata } from './layout';
+
+type PlaidConnectionData = Awaited<ReturnType<PlaidApi["itemPublicTokenExchange"]>>['data']
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>src/app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [PLAID_CLIENT_ID, set_PLAID_CLIENT_ID] = useState("");
+  const [PLAID_SECRET, set_PLAID_SECRET] = useState("");
+  const [PLAID_ACCESS_TOKEN, set_PLAID_ACCESS_TOKEN] = useState("");
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
+  const [plaidConnectionData, setPlaidConnectionData] = useState<PlaidConnectionData | null>(null)
+
+  const [PLAID_LINK_TOKEN, set_PLAID_LINK_TOKEN] = useState("");
+  const { open, ready, exit, submit, error } = usePlaidLink({
+    token: PLAID_LINK_TOKEN,
+    onEvent: (event, metadata) => {
+      console.log("===============")
+      console.log(event, metadata)
+    },
+    onSuccess: async (public_token, metadata) => {
+      const response = await fetch("/api/access_token", {
+        method: "POST",
+        body: JSON.stringify({ PLAID_CLIENT_ID, PLAID_SECRET, PUBLIC_TOKEN: public_token })
+      }).then(res => res.json()) as Awaited<ReturnType<PlaidApi["itemPublicTokenExchange"]>>['data']
+      setPlaidConnectionData(response)
+    },
+  });
+  useEffect(() => {
+    console.log(error)
+  }, [error])
+
+  const onConnectClick = async () => {
+    const response = await fetch("/api/link", {
+      method: "POST",
+      body: JSON.stringify({ PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ACCESS_TOKEN: PLAID_ACCESS_TOKEN || undefined })
+    }).then(res => res.json()) as Awaited<ReturnType<PlaidApi["linkTokenCreate"]>>['data']
+    set_PLAID_LINK_TOKEN(response.link_token)
+  }
+
+  useEffect(() => {
+    if (PLAID_LINK_TOKEN && ready) {
+      console.log("PLAID_LINK_TOKEN: ", PLAID_LINK_TOKEN)
+      open();
+    }
+  }, [PLAID_LINK_TOKEN, ready, open])
+
+  return (
+    <div>
+      <main>
+        <Container style={{ height: "100vh" }}>
+          <Box display={"flex"} justifyContent={"center"} alignItems={"center"} height={"100%"}>
+            <Card sx={{width: 500, maxWidth: "100%"}}>
+              <CardHeader title="Plaid Connector" />
+              <Divider />
+              <List>
+                <ListItem>
+                  <TextField fullWidth required size="small" label="CLIENT_ID" value={PLAID_CLIENT_ID} onChange={e => set_PLAID_CLIENT_ID(e.target.value)} />
+                </ListItem>
+                <ListItem>
+                  <TextField fullWidth required size="small" label="SECRET" value={PLAID_SECRET} onChange={e => set_PLAID_SECRET(e.target.value)} />
+                </ListItem>
+                <ListItem>
+                  <TextField fullWidth size="small" label="ACCESS_TOKEN" value={PLAID_ACCESS_TOKEN} onChange={e => set_PLAID_ACCESS_TOKEN(e.target.value)} />
+                </ListItem>
+                <ListItem>
+                  <Button variant="outlined" onClick={onConnectClick} fullWidth>Connect</Button>
+                </ListItem>
+              </List>
+              <Divider />
+              <List>
+                <ListItem>
+                  <Typography>access_token: {plaidConnectionData?.access_token}</Typography>
+                </ListItem>
+                <ListItem>
+                  <Typography>item_id: {plaidConnectionData?.item_id}</Typography>
+                </ListItem>
+                <ListItem>
+                  <Typography>request_id: {plaidConnectionData?.request_id}</Typography>
+                </ListItem>
+              </List>
+            </Card>
+          </Box>
+        </Container>
       </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
