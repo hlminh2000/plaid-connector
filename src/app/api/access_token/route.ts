@@ -1,7 +1,17 @@
-import { Configuration, CountryCode, PlaidApi, Products } from "plaid";
+import { Configuration, PlaidApi } from "plaid";
+import z from 'zod';
+
+const RequestBodySchema = z.strictObject({
+  PLAID_CLIENT_ID: z.string().min(1),
+  PLAID_SECRET: z.string().min(1),
+  PUBLIC_TOKEN: z.string().min(1),
+})
 
 export async function POST(request: Request) {
-  const { PLAID_CLIENT_ID, PLAID_SECRET, PUBLIC_TOKEN } = await request.json();
+  const { data, error } = RequestBodySchema.safeParse(await request.json());
+  if (error) return Response.json(error)
+
+  const { PLAID_CLIENT_ID, PLAID_SECRET, PUBLIC_TOKEN } = data
   const client = new PlaidApi(new Configuration({
     basePath: "https://production.plaid.com",
     baseOptions: {
