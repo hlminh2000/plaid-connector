@@ -31,6 +31,7 @@ export default function Home() {
   const [PLAID_PRODUCTS, set_PLAID_PRODUCTS] = useState([Products.Transactions]);
   const [PLAID_COUNTRY_CODES, set_PLAID_COUNTRY_CODES] = useState([CountryCode.Ca, CountryCode.Us]);
 
+  const [loadingLinkToken, setLoadingLinkToken] = useState(false);
   const theme = useTheme();
 
   const [plaidConnectionData, setPlaidConnectionData] = useState<PlaidConnectionData | null>(null)
@@ -52,20 +53,24 @@ export default function Home() {
   });
 
   const onConnectClick = async () => {
+    setLoadingLinkToken(true)
     const response = await fetch("/api/link", {
       method: "POST",
       body: JSON.stringify({ PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ACCESS_TOKEN: PLAID_ACCESS_TOKEN || undefined })
-    }).then(res => res.json()) as Awaited<ReturnType<PlaidApi["linkTokenCreate"]>>['data']
+    }).then(res => res.json()).catch(err => null) as Awaited<ReturnType<PlaidApi["linkTokenCreate"]>>['data'] | null
     
-    if (!response.link_token) return alert('Could not generate a Plaid link_token')
+    if (!response?.link_token) {
+      setLoadingLinkToken(false)
+      return alert('Could not generate a Plaid link_token')
+    }
 
     return set_PLAID_LINK_TOKEN(response.link_token)
   }
 
   useEffect(() => {
     if (PLAID_LINK_TOKEN && ready) {
-      console.log("PLAID_LINK_TOKEN: ", PLAID_LINK_TOKEN)
       open();
+      setLoadingLinkToken(false)
     }
   }, [PLAID_LINK_TOKEN, ready, open])
 
@@ -80,13 +85,35 @@ export default function Home() {
               <Divider />
               <List>
                 <ListItem>
-                  <TextField fullWidth required size="small" label="CLIENT_ID" value={PLAID_CLIENT_ID} onChange={e => set_PLAID_CLIENT_ID(e.target.value)} />
+                  <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    label="CLIENT_ID" 
+                    value={PLAID_CLIENT_ID} 
+                    onChange={e => set_PLAID_CLIENT_ID(e.target.value)} 
+                  />
                 </ListItem>
                 <ListItem>
-                  <TextField fullWidth required size="small" label="SECRET" value={PLAID_SECRET} onChange={e => set_PLAID_SECRET(e.target.value)} />
+                  <TextField
+                    fullWidth
+                    required
+                    size="small"
+                    label="SECRET" 
+                    value={PLAID_SECRET} 
+                    onChange={e => set_PLAID_SECRET(e.target.value)} 
+                    type="password"
+                  />
                 </ListItem>
                 <ListItem>
-                  <TextField fullWidth size="small" label="ACCESS_TOKEN (optional)" value={PLAID_ACCESS_TOKEN} onChange={e => set_PLAID_ACCESS_TOKEN(e.target.value)} />
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="ACCESS_TOKEN (optional)" 
+                    value={PLAID_ACCESS_TOKEN} 
+                    onChange={e => set_PLAID_ACCESS_TOKEN(e.target.value)} 
+                    type="password"
+                  />
                 </ListItem>
                 <ListItem>
                   <FormControl fullWidth>
@@ -159,7 +186,7 @@ export default function Home() {
                   </FormControl>
                 </ListItem>
                 <ListItem>
-                  <Button variant="outlined" onClick={onConnectClick} fullWidth>Connect</Button>
+                  <Button variant="outlined" onClick={onConnectClick} fullWidth disabled={loadingLinkToken}>Connect</Button>
                 </ListItem>
               </List>
               {plaidConnectionData && <>
